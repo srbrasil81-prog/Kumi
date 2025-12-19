@@ -1,4 +1,5 @@
 print("Hello Word")
+function love.load()
     love.window.setMode(960, 540, {resizable=false})
     W, H = love.graphics.getDimensions()
 
