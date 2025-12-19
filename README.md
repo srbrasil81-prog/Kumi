@@ -1,7 +1,6 @@
 -- main.lua
--- Template GUI em Lua (Love2D)
+-- Template GUI em Lua (Love2D) - corrigido para evitar chamada direta de callbacks
 -- AVISO: Apenas interface local / gerenciamento de configurações.
--- Não contém nem realiza cheats, injeções, ou manipulação de processos externos.
 
 local config = {
     esp_players = false,
@@ -112,6 +111,21 @@ local function addButton(id, x, y, w, h, label, onClick)
     ui.buttons[id] = {x=x, y=y, w=w, h=h, label=label, onClick=onClick}
 end
 
+-- Helper: atualiza valor do slider usando posição x do mouse
+local function update_slider_value_from_mouse(mx, slider)
+    local d = slider
+    local t = (mx - d.x0) / d.w
+    if t < 0 then t = 0 elseif t > 1 then t = 1 end
+    local value = math.floor(d.min + t * (d.max - d.min) + 0.5)
+    if d.type == "speed" then
+        config.speed = value
+        ui.status = "speed = " .. tostring(config.speed)
+    elseif d.type == "fov" then
+        config.fov = value
+        ui.status = "fov = " .. tostring(config.fov)
+    end
+end
+
 function love.load()
     love.window.setTitle("Template GUI - Opções (ESP, Speed, etc.)")
     love.window.setMode(520, 360, {resizable=false})
@@ -150,7 +164,7 @@ function love.draw()
 
     -- Checkboxes
     local cx, cy = 40, 70
-    local _,_,_,_ = drawCheckbox(cx, cy, "ESP Players", config.esp_players)
+    drawCheckbox(cx, cy, "ESP Players", config.esp_players)
     cx = cx + 240
     drawCheckbox(cx, cy, "ESP Items", config.esp_items)
 
@@ -167,7 +181,7 @@ function love.draw()
     -- Speed slider
     local sx, sy = 40, 180
     love.graphics.print("Speed: " .. tostring(config.speed), sx, sy - 20)
-    local bx, by, bw, bh, knobX = drawSlider(sx, sy, 420, 1, 100, config.speed)
+    drawSlider(sx, sy, 420, 1, 100, config.speed)
 
     -- FOV slider
     local fx, fy = 40, 220
@@ -208,16 +222,16 @@ function love.mousepressed(x, y, button)
     end
 
     -- Sliders: speed and fov
-    -- speed slider geometry
     local sx, sy, sw, sh = 40, 180, 420, 16
     local fx, fy, fw, fh = 40, 220, 420, 16
     if pointInRect(x, y, sx, sy, sw, sh) then
         ui.dragging = {type="speed", x0 = sx, w = sw, min = 1, max = 100}
-        love.mousemoved(x, y, 0, 0)
+        -- chama função interna para ajustar imediatamente, sem chamar love.mousemoved()
+        update_slider_value_from_mouse(x, ui.dragging)
         return
     elseif pointInRect(x, y, fx, fy, fw, fh) then
         ui.dragging = {type="fov", x0 = fx, w = fw, min = 60, max = 180}
-        love.mousemoved(x, y, 0, 0)
+        update_slider_value_from_mouse(x, ui.dragging)
         return
     end
 
@@ -237,17 +251,7 @@ end
 
 function love.mousemoved(x, y, dx, dy)
     if ui.dragging then
-        local d = ui.dragging
-        local t = (x - d.x0) / d.w
-        if t < 0 then t = 0 elseif t > 1 then t = 1 end
-        local value = math.floor(d.min + t * (d.max - d.min) + 0.5)
-        if d.type == "speed" then
-            config.speed = value
-            ui.status = "speed = " .. tostring(config.speed)
-        elseif d.type == "fov" then
-            config.fov = value
-            ui.status = "fov = " .. tostring(config.fov)
-        end
+        update_slider_value_from_mouse(x, ui.dragging)
     end
 end
 
