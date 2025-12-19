@@ -1,7 +1,3 @@
--- main.lua
--- Template GUI em Lua (Love2D) - corrigido para evitar chamada direta de callbacks
--- AVISO: Apenas interface local / gerenciamento de configurações.
-
 local config = {
     esp_players = false,
     esp_items = false,
@@ -46,39 +42,56 @@ end
 
 local function save_config(filename)
     local chunk = "return " .. serialize_table(config)
+    print("[DEBUG] Salvando config para:", filename)
+    print("[DEBUG] Conteúdo a ser salvo:\n" .. chunk)
     local ok, err = love.filesystem.write(filename, chunk)
     if ok then
         ui.status = "Config salva em " .. filename
+        print("[DEBUG] Save OK:", filename)
     else
         ui.status = "Erro ao salvar: " .. tostring(err)
+        print("[DEBUG] Save ERRO:", tostring(err))
     end
 end
 
 local function load_config(filename)
+    print("[DEBUG] Tentando carregar config de:", filename)
     if not love.filesystem.getInfo(filename) then
         ui.status = "Arquivo não encontrado: " .. filename
+        print("[DEBUG] Arquivo não encontrado:", filename)
         return
     end
+
+    local content = love.filesystem.read(filename) or "<sem conteúdo>"
+    print("[DEBUG] Conteúdo do arquivo:\n" .. content)
+
     local chunk, loadErr = love.filesystem.load(filename)
     if not chunk then
         ui.status = "Erro ao carregar: " .. tostring(loadErr)
+        print("[DEBUG] Erro ao carregar chunk:", tostring(loadErr))
         return
     end
-    local ok, result = pcall(chunk)
+
+    local ok, result_or_err = pcall(function() return chunk() end)
     if not ok then
-        ui.status = "Erro ao executar config: " .. tostring(result)
+        ui.status = "Erro ao executar config: " .. tostring(result_or_err)
+        print("[DEBUG] Erro ao executar chunk:", tostring(result_or_err))
         return
     end
+
+    local result = result_or_err
     if type(result) == "table" then
-        -- apenas copia campos esperados
         for k, _ in pairs(config) do
             if result[k] ~= nil then
                 config[k] = result[k]
             end
         end
         ui.status = "Config carregada de " .. filename
+        print("[DEBUG] Config carregada com sucesso.")
+        for k, v in pairs(config) do print("  ", k, "=", tostring(v)) end
     else
-        ui.status = "Arquivo inválido"
+        ui.status = "Arquivo inválido: não retornou uma tabela"
+        print("[DEBUG] Arquivo não retornou tabela. Resultado:", tostring(result))
     end
 end
 
@@ -120,13 +133,16 @@ local function update_slider_value_from_mouse(mx, slider)
     if d.type == "speed" then
         config.speed = value
         ui.status = "speed = " .. tostring(config.speed)
+        print("[DEBUG] slider speed =>", config.speed)
     elseif d.type == "fov" then
         config.fov = value
         ui.status = "fov = " .. tostring(config.fov)
+        print("[DEBUG] slider fov =>", config.fov)
     end
 end
 
 function love.load()
+    print("[DEBUG] love.load iniciado")
     love.window.setTitle("Template GUI - Opções (ESP, Speed, etc.)")
     love.window.setMode(520, 360, {resizable=false})
     ui.font = love.graphics.newFont(12)
@@ -134,7 +150,7 @@ function love.load()
 
     -- Botões: Apply, Save, Load
     addButton("apply", 30, 280, 100, 32, "Aplicar", function()
-        -- Apenas demonstrativo: imprime no console
+        print("[DEBUG] Botão Aplicar pressionado")
         print("Config aplicada:")
         for k, v in pairs(config) do
             print("  ", k, "=", tostring(v))
@@ -142,9 +158,11 @@ function love.load()
         ui.status = "Config aplicada (veja console)"
     end)
     addButton("save", 150, 280, 120, 32, "Salvar Config", function()
+        print("[DEBUG] Botão Salvar pressionado")
         save_config("config.lua")
     end)
     addButton("load", 290, 280, 120, 32, "Carregar Config", function()
+        print("[DEBUG] Botão Carregar pressionado")
         load_config("config.lua")
     end)
 end
@@ -153,16 +171,13 @@ function love.draw()
     love.graphics.clear(0.95, 0.95, 0.95)
     love.graphics.setColor(0, 0, 0)
 
-    -- Título
     love.graphics.setColor(0.1, 0.1, 0.1)
     love.graphics.printf("Template GUI - Opções (ESP, Speed, etc.)", 10, 8, 500, "center")
 
     love.graphics.setColor(0, 0, 0)
-    -- ESP frame
     love.graphics.rectangle("line", 20, 40, 480, 100)
     love.graphics.print("ESP / Overlay", 26, 42)
 
-    -- Checkboxes
     local cx, cy = 40, 70
     drawCheckbox(cx, cy, "ESP Players", config.esp_players)
     cx = cx + 240
@@ -174,21 +189,17 @@ function love.draw()
     cx = cx + 240
     drawCheckbox(cx, cy, "Opção extra (placeholder)", config.extra_option)
 
-    -- Movement / Speed frame
     love.graphics.rectangle("line", 20, 150, 480, 110)
     love.graphics.print("Movement / Speed", 26, 152)
 
-    -- Speed slider
     local sx, sy = 40, 180
     love.graphics.print("Speed: " .. tostring(config.speed), sx, sy - 20)
     drawSlider(sx, sy, 420, 1, 100, config.speed)
 
-    -- FOV slider
     local fx, fy = 40, 220
     love.graphics.print("FOV: " .. tostring(config.fov), fx, fy - 20)
     drawSlider(fx, fy, 420, 60, 180, config.fov)
 
-    -- Botões
     for id, b in pairs(ui.buttons) do
         love.graphics.setColor(0.85, 0.85, 0.85)
         love.graphics.rectangle("fill", b.x, b.y, b.w, b.h)
@@ -197,7 +208,6 @@ function love.draw()
         love.graphics.printf(b.label, b.x, b.y + 8, b.w, "center")
     end
 
-    -- Status
     love.graphics.setColor(0.2, 0.2, 0.6)
     love.graphics.print("Status: " .. ui.status, 20, 330)
     love.graphics.setColor(1,1,1)
@@ -205,8 +215,8 @@ end
 
 function love.mousepressed(x, y, button)
     if button ~= 1 then return end
+    print(string.format("[DEBUG] mousepressed at (%.1f, %.1f)", x, y))
 
-    -- Click em checkboxes
     local checks = {
         {x=40, y=70, key="esp_players"},
         {x=280, y=70, key="esp_items"},
@@ -217,27 +227,28 @@ function love.mousepressed(x, y, button)
         if pointInRect(x, y, c.x, c.y, 18, 18) then
             config[c.key] = not config[c.key]
             ui.status = c.key .. " = " .. tostring(config[c.key])
+            print("[DEBUG] checkbox toggled:", c.key, config[c.key])
             return
         end
     end
 
-    -- Sliders: speed and fov
     local sx, sy, sw, sh = 40, 180, 420, 16
     local fx, fy, fw, fh = 40, 220, 420, 16
     if pointInRect(x, y, sx, sy, sw, sh) then
         ui.dragging = {type="speed", x0 = sx, w = sw, min = 1, max = 100}
-        -- chama função interna para ajustar imediatamente, sem chamar love.mousemoved()
+        print("[DEBUG] started dragging slider: speed")
         update_slider_value_from_mouse(x, ui.dragging)
         return
     elseif pointInRect(x, y, fx, fy, fw, fh) then
         ui.dragging = {type="fov", x0 = fx, w = fw, min = 60, max = 180}
+        print("[DEBUG] started dragging slider: fov")
         update_slider_value_from_mouse(x, ui.dragging)
         return
     end
 
-    -- Botões
     for id, b in pairs(ui.buttons) do
         if pointInRect(x, y, b.x, b.y, b.w, b.h) then
+            print("[DEBUG] botão clicado:", id)
             if b.onClick then b.onClick() end
             return
         end
@@ -246,6 +257,9 @@ end
 
 function love.mousereleased(x, y, button)
     if button ~= 1 then return end
+    if ui.dragging then
+        print("[DEBUG] mouse released, stopped dragging:", ui.dragging.type)
+    end
     ui.dragging = nil
 end
 
@@ -256,6 +270,7 @@ function love.mousemoved(x, y, dx, dy)
 end
 
 function love.keypressed(key)
+    print("[DEBUG] keypressed:", key)
     if key == "escape" then
         love.event.quit()
     end
