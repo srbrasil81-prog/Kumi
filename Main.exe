@@ -1,0 +1,112 @@
+print("Hello Word")
+function love.load()
+    love.window.setMode(960, 540, {resizable=false})
+    W, H = love.graphics.getDimensions()
+
+    -- Janela "fake" dentro do canvas
+    gui = {
+        x = (W - 600) / 2,
+        y = (H - 260) / 2,
+        w = 600,
+        h = 260,
+        radius = 8,
+        topbar_h = 36,
+        title = "00JCGUI"
+    }
+
+    colors = {
+        bg = {0.06, 0.06, 0.06},        -- fundo da tela (quase preto)
+        shadow = {0, 0, 0, 0.55},      -- sombra
+        topbar = {0.97, 0.97, 0.97},   -- barra superior (branca)
+        body = {0.28, 0.28, 0.28},     -- corpo da janela (cinza escuro)
+        title = {0.92, 0.82, 0.24},    -- amarelo do título
+        controls = {0.18, 0.18, 0.18}, -- cor ícones janela
+        border = {0.18, 0.18, 0.18}
+    }
+
+    fontTitle = love.graphics.newFont(18)
+    fontHeader = love.graphics.newFont(12)
+
+    -- small control positions relative to gui
+    ctrl = {
+        size = 14,
+        padding_right = 10,
+        spacing = 8
+    }
+
+    love.graphics.setBackgroundColor(colors.bg)
+end
+
+local function drawRoundedShadow(x, y, w, h, r, sx, sy)
+    love.graphics.setColor(colors.shadow)
+    love.graphics.rectangle("fill", x + sx, y + sy, w, h, r, r)
+end
+
+local function drawWindow(x, y, w, h, r)
+    -- sombra
+    drawRoundedShadow(x, y, w, h, r, 0, 8)
+
+    -- Topbar (desenhamos topbar arredondada e depois cobrimos a parte inferior para que só os cantos superiores fiquem arredondados)
+    love.graphics.setColor(colors.topbar)
+    love.graphics.rectangle("fill", x, y, w, gui.topbar_h + r, r, r) -- desenha com raio para os cantos
+
+    -- Corpo: desenhado por baixo e sobrepondo a parte inferior da topbar para "remover" arredondamento inferior da topbar
+    love.graphics.setColor(colors.body)
+    love.graphics.rectangle("fill", x, y + gui.topbar_h, w, h - gui.topbar_h, 0, 0)
+
+    -- Borda sutil
+    love.graphics.setColor(colors.border)
+    love.graphics.setLineWidth(1)
+    love.graphics.rectangle("line", x, y, w, h, r, r)
+
+    -- Título à esquerda na topbar
+    love.graphics.setFont(fontTitle)
+    love.graphics.setColor(colors.title)
+    local title_x = x + 12
+    local title_y = y + (gui.topbar_h - fontTitle:getHeight()) / 2
+    love.graphics.print(gui.title, title_x, title_y)
+
+    -- Ícones de controle à direita (minimizar, maximizar, fechar)
+    local cx = x + w - ctrl.padding_right
+    local cy = y + (gui.topbar_h - ctrl.size) / 2
+
+    -- Close (um "x")
+    love.graphics.setColor(colors.controls)
+    local close_size = ctrl.size
+    local close_x = cx - close_size
+    love.graphics.setLineWidth(2)
+    love.graphics.line(close_x, cy, close_x + close_size, cy + close_size)
+    love.graphics.line(close_x + close_size, cy, close_x, cy + close_size)
+
+    -- Maximize (um quadrado)
+    cx = close_x - ctrl.spacing
+    local max_size = close_size
+    love.graphics.rectangle("line", cx - max_size, cy, max_size, max_size)
+
+    -- Minimize (um traço)
+    cx = cx - ctrl.spacing
+    love.graphics.setLineWidth(3)
+    love.graphics.line(cx - 2, cy + max_size/2, cx + max_size - 6, cy + max_size/2)
+
+    -- Linha divisória sutil entre topbar e corpo (opcional)
+    love.graphics.setColor(0,0,0,0.12)
+    love.graphics.rectangle("fill", x, y + gui.topbar_h - 1, w, 1)
+end
+
+function love.draw()
+    -- central simple scene background já configurado pelo love.load
+    -- desenha a "janela" GUI
+    drawWindow(gui.x, gui.y, gui.w, gui.h, gui.radius)
+
+    -- (Opcional) instrução pequena no canto inferior
+    love.graphics.setFont(fontHeader)
+    love.graphics.setColor(0.8, 0.8, 0.8, 0.7)
+    love.graphics.printf("Exemplo GUI em Love2D — salve como main.lua e rode com love .", 8, H - 24, W - 16, "center")
+end
+
+-- Ajustes simples ao redimensionar (se quiser permitir)
+function love.resize(w, h)
+    W, H = w, h
+    gui.x = (W - gui.w) / 2
+    gui.y = (H - gui.h) / 2
+end
